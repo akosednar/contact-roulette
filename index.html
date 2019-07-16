@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Contact Roulette</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+      API_KEY = "REPLACE ME";
+    </script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link type="text/css" rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    </div>
+    <div class="container">
+
+      <!-- Start Message -->
+      <div id="get-started" class="content-box">
+        <h2>Contact Roulette</h2>
+        <p>Haven't talked to your friends lately?</p>
+        <p>Send a gif randomly to one of your contacts with Nylas!</p>
+        <center>
+          <iframe src="https://giphy.com/embed/14aUO0Mf7dWDXW" width="280" height="280" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+          <br />
+          <a class="btn btn-large btn-primary" href="https://api.nylas.com/oauth/authorize?client_id=dc38le3xqa2m46d60cpkhpfld&response_type=token&scopes=email,contacts&redirect_uri=https://anthonykosednar.com/contact-roulette/">Get Started</a>
+        </center>
+      </div>
+
+      <!-- Connecting Message -->
+      <div id="waiting" class="content-box" style="display: none;">
+        <h2>Contact Roulette</h2>
+        <p>Loading...</p>
+        <p>We are finding a contact and a gif!</p>
+        <center>
+         <iframe src="https://giphy.com/embed/TvLuZ00OIADoQ" width="280" height="280" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+        </center>
+      </div>
+
+      <!-- Complete Message -->
+      <div id="done" class="content-box" style="display: none;">
+        <h2>Contact Roulette</h2>
+        <p>All done!</p>
+        <p>A contact of yours has been sent a random gif. Now all you need to do is wait for the reply!</p>
+        <center>
+          <iframe src="https://giphy.com/embed/26u4lOMA8JKSnL9Uk" width="280" height="280" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+        </center>
+      </div>
+
+      <!-- Complete Message -->
+      <div id="error" class="content-box" style="display: none;">
+        <h2>Contact Roulette</h2>
+        <p>Oh No!</p>
+        <p>It appears something went wrong. Refresh the page and try again</p>
+        <center>
+          <iframe src="https://giphy.com/embed/13d2jHlSlxklVe" width="280" height="280" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+        </center>
+      </div>
+    </div>
+
+
+    <!-- JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+      $( document ).ready(function(){
+        // Check if page url has the access token. Otherwise the user auth with Nylas
+        url = new URL(window.location.href);
+
+        if (url.searchParams.get('access_token')) {
+
+          // Show the right sections
+          $("#get-started").hide();
+          $("#waiting").show();
+          $("#done").hide();
+          $("#error").hide();
+
+          // Since we have the access token. Select a random contact to send the email to
+          access_token = url.searchParams.get('access_token');
+          $.ajax({     
+            type: "GET",
+            url: 'https://api.nylas.com/contacts',
+            headers: { 'authorization': access_token },
+            async: false }).done(function( data ) {
+              if (isNaN(data)) {
+                num_contacts = data.length
+
+                // Make sure we get a contact (but not a no-reply contact)
+                contact_email = ""
+                while (contact_email == "" || contact_email.includes("no-reply") || contact_email.includes("noreply")) {
+                  random_contact = Math.floor(Math.random() * (num_contacts-1)) + 0;
+                  console.log("Random Contact "+random_contact.toString());
+                  if ('emails' in data[random_contact]){
+                    if (data[random_contact]["emails"].length > 0) {
+                      if('email' in data[random_contact]["emails"][0]){
+                        contact_email = data[random_contact]["emails"][0]["email"];
+                      }
+                    }
+                  }
+                }
+
+                console.log("Contact Email - "+contact_email);
+              }
+              else  {
+                // Errorz!
+                console.log("Contact error");
+                $("#waiting").hide();
+                $("#error").show();
+              }
+            return true;
+          });
+
+          // Select a random gif to send to the contact
+          gif_url = ""
+          $.ajax({     
+            type: "GET",
+            url: 'https://api.giphy.com/v1/gifs/random?api_key='+API_KEY,
+            async: false }).done(function( data ) {
+              if (isNaN(data)) {
+                gif_url = data["data"]["images"]["downsized"]["url"];
+                console.log("GIF URL - "+gif_url);
+              }
+              else  {
+                // Errorz!
+                console.log("GIF error");
+                $("#waiting").hide();
+                $("#error").show();
+              }
+            return true;
+          });
+
+          // Let's get the user's email & contact for the to field
+          $.ajax({     
+            type: "GET",
+            url: 'https://api.nylas.com/account',
+            headers: { 'authorization': access_token },
+            async: false }).done(function( data ) {
+              if (isNaN(data)) {
+                to_email = data["email_address"];
+                to_name = data["name"];
+              }
+              else  {
+                // Errorz!
+                console.log("Contact error");
+                $("#waiting").hide();
+                $("#error").show();
+              }
+            return true;
+          });
+
+          // Send the gif to the contact
+          if(gif_url != ""){
+            var data = JSON.stringify({
+              "to": [
+                {
+                  "name": contact_email,
+                  "email": contact_email
+                }
+              ],
+              "subject": "Hey - Check out this GIF!",
+              "from": [
+                {
+                  "name": to_name,
+                  "email": to_email
+                }
+              ],
+              "body": "<center><p style='font-size:14px;font-style:bold;'><b>Hey!<br /><br />Here's a random GIF for your day.</b></p><br /><img src='"+gif_url+"' /><br /><br /><b>Powered By:</b><br /><br /><a href='https://nylas.com'><img src='https://theme.zdassets.com/theme_assets/786754/3de63879d1497f06db3e3c957970a10a7a9c6465.png' width='100px' /></a></center>"
+            });
+
+            var xhr = new XMLHttpRequest();
+            xhr.withCredentials = true;
+
+            xhr.addEventListener("readystatechange", function () {
+              if (this.readyState === this.DONE) {              
+                $("#waiting").hide();
+                $("#done").show();
+              }
+            });
+
+            xhr.open("POST", "https://api.nylas.com/send");
+            xhr.setRequestHeader("authorization", "JifiixmjBJW9arJb2TpdUlodJ7GJe4");
+            xhr.send(data);
+          }
+        }
+        else{
+
+          // Show the right sections
+          $("#get-started").show();
+          $("#waiting").hide();
+          $("#done").hide();
+          $("#error").hide();
+
+        }
+      });
+
+
+    </script>
+  </body>
+</html>
+
